@@ -1,0 +1,15 @@
+{
+  "name": "rsvp",
+  "version": "1.0.0",
+  "description": "Cloudflare Workers RSVP app",
+  "scripts": {
+    "test": "node --test",
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler deploy"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "private": true
+}
