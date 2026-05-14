@@ -60,3 +60,9 @@ invite_code,name,email,password,max_guests
 ```
 
 Each invitee can have the same or different password.
+Uploaded invite passwords are securely hashed before storage, and passwords are not shown in admin tables or CSV export.
+
+## Security Notes
+
+- `SESSION_SECRET` is required and should be a long random value.
+- Use non-trivial invite passwords, and prefer unique passwords per invitee/family.

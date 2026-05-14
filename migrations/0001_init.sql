@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS invitees (
   invite_code TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
   email TEXT,
-  password TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
   max_guests INTEGER NOT NULL DEFAULT 2,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

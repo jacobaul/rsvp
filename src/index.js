@@ -1,5 +1,8 @@
 const INVITE_COOKIE = 'invite_session';
 const ADMIN_COOKIE = 'admin_session';
+const DEFAULT_MAX_GUESTS = 2;
+const EVENT_DATE = 'October 12, 2026';
+const EVENT_LOCATION = 'Garden Hall';
 
 export default {
   async fetch(request, env) {
@@ -105,16 +108,16 @@ async function handlePublicLogin(request, env) {
   const password = (form.get('password') || '').toString();
 
   const invitee = await env.DB.prepare(
-    'SELECT invite_code, password FROM invitees WHERE invite_code = ?'
+    'SELECT invite_code, password_hash FROM invitees WHERE invite_code = ?'
   )
     .bind(inviteCode)
     .first();
 
-  if (!invitee || invitee.password !== password) {
+  if (!invitee || !(await verifyInvitePassword(password, invitee.password_hash))) {
     return Response.redirect(new URL('/?message=Invalid+invite+code+or+password', request.url), 302);
   }
 
-  const token = await signSession({ type: 'invite', code: invitee.invite_code }, env.SESSION_SECRET || env.ADMIN_PASSWORD || 'change-me');
+  const token = await signSession({ type: 'invite', code: invitee.invite_code }, getSessionSecret(env));
   return new Response(null, {
     status: 302,
     headers: {
@@ -151,7 +154,7 @@ async function handleRsvpPage(request, env, url) {
     <div class="card">
       <h1>Wedding RSVP</h1>
       <p>Hi ${escapeHtml(invitee.name)}! We cannot wait to celebrate together.</p>
-      <p><strong>Date:</strong> October 12, 2026<br><strong>Location:</strong> Garden Hall</p>
+      <p><strong>Date:</strong> ${escapeHtml(EVENT_DATE)}<br><strong>Location:</strong> ${escapeHtml(EVENT_LOCATION)}</p>
       ${success ? '<p class="success">Your RSVP was saved.</p>' : ''}
       <form action="/rsvp" method="post" class="stack">
         <label>Will you attend?
@@ -191,9 +194,9 @@ async function handleRsvpSubmit(request, env) {
 
   const form = await request.formData();
   const attending = (form.get('attending') || 'no').toString() === 'yes' ? 1 : 0;
-  const requestedGuestCount = Number.parseInt((form.get('guest_count') || '0').toString(), 10);
-  const guestCount = Number.isFinite(requestedGuestCount)
-    ? Math.max(0, Math.min(invitee.max_guests, requestedGuestCount))
+  const parsedGuestCount = Number.parseInt((form.get('guest_count') || '0').toString(), 10);
+  const guestCount = Number.isFinite(parsedGuestCount)
+    ? Math.max(0, Math.min(invitee.max_guests, parsedGuestCount))
     : 0;
   const dietaryNotes = (form.get('dietary_notes') || '').toString().trim();
   const message = (form.get('message') || '').toString().trim();
@@ -227,7 +230,7 @@ async function handleAdminPage(request, env, url) {
   }
 
   const rows = await env.DB.prepare(
-    `SELECT i.invite_code, i.name, i.email, i.password, i.max_guests,
+    `SELECT i.invite_code, i.name, i.email, i.max_guests,
             r.attending, r.guest_count, r.dietary_notes, r.message, r.updated_at
        FROM invitees i
        LEFT JOIN responses r ON r.invitee_id = i.id
@@ -240,7 +243,6 @@ async function handleAdminPage(request, env, url) {
       <td>${escapeHtml(row.invite_code)}</td>
       <td>${escapeHtml(row.name)}</td>
       <td>${escapeHtml(row.email || '')}</td>
-      <td>${escapeHtml(row.password)}</td>
       <td>${row.max_guests}</td>
       <td>${row.attending === null ? '—' : row.attending ? 'Yes' : 'No'}</td>
       <td>${row.guest_count ?? '—'}</td>
@@ -269,8 +271,8 @@ async function handleAdminPage(request, env, url) {
       <div class="card table-wrap">
         <h2>Invitees & RSVPs</h2>
         <table>
-          <thead><tr><th>Code</th><th>Name</th><th>Email</th><th>Password</th><th>Max Guests</th><th>Attending</th><th>Guests</th><th>Dietary</th><th>Message</th><th>Updated</th></tr></thead>
-          <tbody>${tableRows || '<tr><td colspan="10">No invitees yet.</td></tr>'}</tbody>
+          <thead><tr><th>Code</th><th>Name</th><th>Email</th><th>Max Guests</th><th>Attending</th><th>Guests</th><th>Dietary</th><th>Message</th><th>Updated</th></tr></thead>
+          <tbody>${tableRows || '<tr><td colspan="9">No invitees yet.</td></tr>'}</tbody>
         </table>
       </div>
     </div>
@@ -286,7 +288,7 @@ async function handleAdminLogin(request, env) {
     return Response.redirect(new URL('/admin?error=1', request.url), 302);
   }
 
-  const token = await signSession({ type: 'admin' }, env.SESSION_SECRET || env.ADMIN_PASSWORD);
+  const token = await signSession({ type: 'admin' }, getSessionSecret(env));
   return new Response(null, {
     status: 302,
     headers: {
@@ -314,18 +316,19 @@ async function handleInviteUpload(request, env) {
 
   const rows = parseCsv(csv).filter((row) => row.invite_code && row.name && row.password);
   for (const row of rows) {
-    const maxGuestsRaw = Number.parseInt(row.max_guests || '2', 10);
-    const maxGuests = Number.isFinite(maxGuestsRaw) ? Math.max(0, maxGuestsRaw) : 2;
+    const maxGuestsRaw = Number.parseInt(row.max_guests || String(DEFAULT_MAX_GUESTS), 10);
+    const maxGuests = Number.isFinite(maxGuestsRaw) ? Math.max(0, maxGuestsRaw) : DEFAULT_MAX_GUESTS;
+    const passwordHash = await hashInvitePassword(row.password);
     await env.DB.prepare(
-      `INSERT INTO invitees (invite_code, name, email, password, max_guests)
+      `INSERT INTO invitees (invite_code, name, email, password_hash, max_guests)
        VALUES (?, ?, ?, ?, ?)
        ON CONFLICT(invite_code) DO UPDATE SET
          name = excluded.name,
          email = excluded.email,
-         password = excluded.password,
+         password_hash = excluded.password_hash,
          max_guests = excluded.max_guests`
     )
-      .bind(row.invite_code.trim(), row.name.trim(), (row.email || '').trim(), row.password, maxGuests)
+      .bind(row.invite_code.trim(), row.name.trim(), (row.email || '').trim(), passwordHash, maxGuests)
       .run();
   }
 
@@ -339,14 +342,14 @@ async function handleExport(request, env) {
   }
 
   const rows = await env.DB.prepare(
-    `SELECT i.invite_code, i.name, i.email, i.password, i.max_guests,
+    `SELECT i.invite_code, i.name, i.email, i.max_guests,
             r.attending, r.guest_count, r.dietary_notes, r.message, r.updated_at
        FROM invitees i
        LEFT JOIN responses r ON r.invitee_id = i.id
       ORDER BY i.name ASC`
   ).all();
 
-  const header = ['invite_code', 'name', 'email', 'password', 'max_guests', 'attending', 'guest_count', 'dietary_notes', 'message', 'updated_at'];
+  const header = ['invite_code', 'name', 'email', 'max_guests', 'attending', 'guest_count', 'dietary_notes', 'message', 'updated_at'];
   const lines = [header.join(',')];
   for (const row of rows.results || []) {
     lines.push(
@@ -354,7 +357,6 @@ async function handleExport(request, env) {
         row.invite_code,
         row.name,
         row.email || '',
-        row.password,
         row.max_guests,
         row.attending === null || row.attending === undefined ? '' : row.attending ? 'yes' : 'no',
         row.guest_count ?? '',
@@ -381,7 +383,7 @@ async function getInviteCodeFromSession(request, env) {
   if (!token) {
     return null;
   }
-  const payload = await verifySession(token, env.SESSION_SECRET || env.ADMIN_PASSWORD || 'change-me');
+  const payload = await verifySession(token, getSessionSecret(env));
   if (!payload || payload.type !== 'invite') {
     return null;
   }
@@ -394,8 +396,15 @@ async function isAdminAuthenticated(request, env) {
   if (!token || !env.ADMIN_PASSWORD) {
     return false;
   }
-  const payload = await verifySession(token, env.SESSION_SECRET || env.ADMIN_PASSWORD);
+  const payload = await verifySession(token, getSessionSecret(env));
   return Boolean(payload && payload.type === 'admin');
+}
+
+function getSessionSecret(env) {
+  if (!env.SESSION_SECRET) {
+    throw new Error('SESSION_SECRET must be configured.');
+  }
+  return env.SESSION_SECRET;
 }
 
 function parseCookies(cookieHeader) {
@@ -455,6 +464,49 @@ async function signValue(value, secret) {
   );
   const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(value));
   return bytesToHex(new Uint8Array(signature));
+}
+
+async function hashInvitePassword(password) {
+  const saltBytes = crypto.getRandomValues(new Uint8Array(16));
+  const saltHex = bytesToHex(saltBytes);
+  const hashHex = await pbkdf2Hex(password, saltHex);
+  return `${saltHex}:${hashHex}`;
+}
+
+async function verifyInvitePassword(password, storedHash) {
+  if (!storedHash) {
+    return false;
+  }
+  const [saltHex, hashHex] = storedHash.split(':');
+  if (!saltHex || !hashHex) {
+    return storedHash === password;
+  }
+  const derived = await pbkdf2Hex(password, saltHex);
+  return derived === hashHex;
+}
+
+async function pbkdf2Hex(password, saltHex) {
+  const saltBytes = hexToBytes(saltHex);
+  const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt: saltBytes,
+      iterations: 100000,
+      hash: 'SHA-256',
+    },
+    keyMaterial,
+    256
+  );
+  return bytesToHex(new Uint8Array(bits));
+}
+
+function hexToBytes(hex) {
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i += 1) {
+    out[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  }
+  return out;
 }
 
 function bytesToHex(bytes) {
