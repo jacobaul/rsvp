@@ -237,6 +237,14 @@ async function handleAdminPage(request, env, url) {
       ORDER BY i.name ASC`
   ).all();
 
+  const errorMessage = url.searchParams.get('error');
+  const uploadedCount = Number.parseInt(url.searchParams.get('uploaded') || '', 10);
+  const statusMessage = errorMessage
+    ? `<p class="notice">${escapeHtml(errorMessage)}</p>`
+    : Number.isFinite(uploadedCount)
+      ? `<p class="success">Uploaded ${uploadedCount} invitee${uploadedCount === 1 ? '' : 's'}.</p>`
+      : '';
+
   const tableRows = (rows.results || [])
     .map(
       (row) => `<tr>
@@ -258,6 +266,7 @@ async function handleAdminPage(request, env, url) {
       <div class="card">
         <h1>Invite Admin</h1>
         <p>Upload CSV with headers: <code>invite_code,name,email,password,max_guests</code></p>
+        ${statusMessage}
         <form action="/admin/upload" method="post" enctype="multipart/form-data" class="stack">
           <label>CSV file<input type="file" name="invitees_csv" accept=".csv,text/csv"></label>
           <label>Or paste CSV<textarea name="invitees_text" rows="5"></textarea></label>
@@ -314,7 +323,15 @@ async function handleInviteUpload(request, env) {
     csv = (form.get('invitees_text') || '').toString();
   }
 
+  if (!csv.trim()) {
+    return Response.redirect(new URL('/admin?error=Paste+or+upload+invitee+data+first', request.url), 302);
+  }
+
   const rows = parseCsv(csv).filter((row) => row.invite_code && row.name && row.password);
+  if (rows.length === 0) {
+    return Response.redirect(new URL('/admin?error=No+valid+invitees+found.+Use+headers+invite_code%2Cname%2Cemail%2Cpassword%2Cmax_guests', request.url), 302);
+  }
+
   for (const row of rows) {
     const maxGuestsRaw = Number.parseInt(row.max_guests || String(DEFAULT_MAX_GUESTS), 10);
     const maxGuests = Number.isFinite(maxGuestsRaw) ? Math.max(0, maxGuestsRaw) : DEFAULT_MAX_GUESTS;
@@ -332,7 +349,7 @@ async function handleInviteUpload(request, env) {
       .run();
   }
 
-  return Response.redirect(new URL('/admin', request.url), 302);
+  return Response.redirect(new URL(`/admin?uploaded=${rows.length}`, request.url), 302);
 }
 
 async function handleExport(request, env) {
@@ -525,16 +542,18 @@ function base64UrlDecode(value) {
 }
 
 function parseCsv(csvText) {
-  const lines = csvText.split(/\r?\n/).filter((line) => line.trim());
+  const normalizedText = String(csvText ?? '').replace(/^\uFEFF/, '').trim();
+  const lines = normalizedText.split(/\r?\n/).filter((line) => line.trim());
   if (lines.length === 0) {
     return [];
   }
 
   const [headerLine, ...dataLines] = lines;
-  const headers = splitCsvLine(headerLine).map((h) => h.trim());
+  const delimiter = detectDelimiter(headerLine);
+  const headers = splitCsvLine(headerLine, delimiter).map(normalizeHeader);
 
   return dataLines.map((line) => {
-    const values = splitCsvLine(line);
+    const values = splitCsvLine(line, delimiter);
     const row = {};
     for (let i = 0; i < headers.length; i += 1) {
       row[headers[i]] = (values[i] || '').trim();
@@ -543,7 +562,22 @@ function parseCsv(csvText) {
   });
 }
 
-function splitCsvLine(line) {
+function detectDelimiter(line) {
+  const commaCount = (line.match(/,/g) || []).length;
+  const tabCount = (line.match(/\t/g) || []).length;
+  return tabCount > commaCount ? '\t' : ',';
+}
+
+function normalizeHeader(header) {
+  return String(header ?? '')
+    .replace(/^\uFEFF/, '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function splitCsvLine(line, delimiter = ',') {
   const result = [];
   let current = '';
   let inQuotes = false;
@@ -561,7 +595,7 @@ function splitCsvLine(line) {
       continue;
     }
 
-    if (char === ',' && !inQuotes) {
+    if (char === delimiter && !inQuotes) {
       result.push(current);
       current = '';
       continue;

@@ -5,5 +5,5 @@ compatibility_date = "2026-05-03"
 [[d1_databases]]
 binding = "DB"
 database_name = "rsvp"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "0aa60ecc-82ae-45e9-a282-ea4ac9e4cde2"
 migrations_dir = "migrations"

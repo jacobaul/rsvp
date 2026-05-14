@@ -11,5 +11,8 @@
   "author": "",
   "license": "MIT",
   "type": "module",
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "wrangler": "^4.90.1"
+  }
 }
