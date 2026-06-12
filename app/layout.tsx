@@ -14,7 +14,7 @@ const bodyFont = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Evermore Wedding Template",
+  title: "Jacob and Felicia Wedding",
   description: "A wedding website with event details and coming-soon guest information.",
 };
 
