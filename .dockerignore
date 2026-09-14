@@ -1,0 +1,14 @@
+.git
+.gitignore
+.next
+node_modules
+npm-debug.log*
+pnpm-debug.log*
+Dockerfile
+README.md
+docs
+.env
+.env.*
+docker-compose*.yaml
+**/__tests__
+vitest.config.mts

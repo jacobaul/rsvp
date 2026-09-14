@@ -47,7 +47,7 @@ export default function Home() {
                 href="/rsvp"
                 className="border border-accent bg-accent px-6 py-3 text-center text-sm font-semibold uppercase tracking-[0.25em] text-white transition hover:bg-accent-strong"
               >
-                RSVP Coming Soon
+                RSVP
               </Link>
               <Link
                 href="/schedule"

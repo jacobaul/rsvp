@@ -1,0 +1,22 @@
+# Development only. Production uses an existing Postgres server; see
+# docker-compose.yaml and docs/rsvp-admin-plan.md.
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=rsvp
+      - POSTGRES_PASSWORD=rsvp
+      - POSTGRES_DB=rsvp
+    volumes:
+      - pgdata-dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rsvp -d rsvp"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata-dev:

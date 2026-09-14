@@ -1,0 +1,1 @@
+ALTER TABLE "parties" DROP COLUMN "plus_one_allowed";
