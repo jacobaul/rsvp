@@ -130,7 +130,7 @@ describe.skipIf(!reachable)("dashboard stats and activity", () => {
     await makeParty("AAAAAAAA", "Allergies", [
       { firstName: "A", status: "both", dietaryNotes: "Nut allergy" },
       { firstName: "B", status: "reception", dietaryNotes: "Vegan" },
-      { firstName: "C", status: "ceremony", dietaryNotes: "Coeliac" },
+      { firstName: "C", status: "ceremony", dietaryNotes: "Celiac" },
       { firstName: "D", status: "both" },
     ], { responded: true });
 
@@ -138,7 +138,7 @@ describe.skipIf(!reachable)("dashboard stats and activity", () => {
 
     expect(stats.dietaryCount).toBe(3);
     expect(stats.dietary.map((entry) => entry.notes).sort()).toEqual([
-      "Coeliac",
+      "Celiac",
       "Nut allergy",
       "Vegan",
     ]);

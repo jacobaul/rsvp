@@ -13,6 +13,15 @@ const nextConfig: NextConfig = {
     },
   },
 
+  async redirects() {
+    return [
+      // The travel page was folded into the schedule page.
+      { source: "/travel", destination: "/schedule", permanent: true },
+      // The registry page became the gifts page.
+      { source: "/registry", destination: "/gifts", permanent: true },
+    ];
+  },
+
   async headers() {
     return [
       {

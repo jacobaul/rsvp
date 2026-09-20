@@ -90,6 +90,27 @@ export function collectRsvpSubmission(formData: FormData) {
 }
 
 /**
+ * The whole admin party editor payload.
+ *
+ * Kept here rather than inline in the action so the mapping is covered by
+ * tests. A key that drifts out of step with the schema is invisible to
+ * TypeScript, because safeParse takes `unknown`, and a field with a default
+ * then fills itself in silently instead of failing.
+ */
+export function collectPartyForm(formData: FormData) {
+  return {
+    name: text(formData, "name"),
+    email: text(formData, "email"),
+    phone: text(formData, "phone"),
+    plusOnesAllowed: Number(text(formData, "plusOnesAllowed", "0") || "0"),
+    tags: text(formData, "tags"),
+    adminNotes: text(formData, "adminNotes"),
+    guestMessage: text(formData, "guestMessage"),
+    guests: collectGuestRows(formData),
+  };
+}
+
+/**
  * The admin party editor posts guest fields as parallel arrays. A row with
  * both names blank is how the admin deletes a guest, so it is dropped here.
  */

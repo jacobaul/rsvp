@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/dal";
 import {
   collectAdminGuestAnswers,
-  collectGuestRows,
+  collectPartyForm,
   collectPlusOnes,
 } from "@/lib/rsvp/form-data";
 import {
@@ -24,16 +24,7 @@ import { rsvpSubmissionSchema } from "@/lib/validation/rsvp";
 import type { PartyFormState } from "./form-state";
 
 function parsePartyForm(formData: FormData) {
-  return partyFormSchema.safeParse({
-    name: String(formData.get("name") ?? ""),
-    email: String(formData.get("email") ?? ""),
-    phone: String(formData.get("phone") ?? ""),
-    plusOneAllowed: formData.get("plusOneAllowed") === "on",
-    tags: String(formData.get("tags") ?? ""),
-    adminNotes: String(formData.get("adminNotes") ?? ""),
-    guestMessage: String(formData.get("guestMessage") ?? ""),
-    guests: collectGuestRows(formData),
-  });
+  return partyFormSchema.safeParse(collectPartyForm(formData));
 }
 
 function toFieldErrors(

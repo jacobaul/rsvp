@@ -121,13 +121,17 @@ export default async function PartyPage({
               : "Your party is invited to celebrate with us on Saturday, January 9th, 2027 at Esquimalt Gorge Pavilion in Victoria, BC."}
           </p>
 
-          <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-base text-foreground">
-            {named.map((guest) => (
-              <li key={guest.id} className="font-medium">
-                {guestDisplayName(guest)}
-              </li>
-            ))}
-          </ul>
+          {/* Only listed here when nothing below names the guests: the form
+              headings and the read-only summary both already do. */}
+          {!settings.rsvpOpen ? (
+            <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-base text-foreground">
+              {named.map((guest) => (
+                <li key={guest.id} className="font-medium">
+                  {guestDisplayName(guest)}
+                </li>
+              ))}
+            </ul>
+          ) : null}
 
           {settings.rsvpDeadline && !closed ? (
             <p className="mt-4 text-sm uppercase tracking-[0.2em] text-muted">

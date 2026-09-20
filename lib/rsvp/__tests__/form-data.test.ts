@@ -4,6 +4,7 @@ import {
   collectAdminGuestAnswers,
   collectGuestAnswers,
   collectGuestRows,
+  collectPartyForm,
   collectPlusOnes,
   collectRsvpSubmission,
 } from "../form-data";
@@ -354,5 +355,78 @@ describe("collectAdminGuestAnswers", () => {
     );
 
     expect(answers.map((answer) => answer.guestId)).toEqual([7]);
+  });
+});
+
+describe("collectPartyForm", () => {
+  function partyForm(extra: [string, string][] = []) {
+    return form([
+      ["name", "The Smiths"],
+      ["email", "ann@example.com"],
+      ["phone", "250-555-0143"],
+      ["tags", "family"],
+      ["adminNotes", "Nan needs a lift"],
+      ["guest.id", ""],
+      ["guest.firstName", "Ann"],
+      ["guest.lastName", "Smith"],
+      ...extra,
+    ]);
+  }
+
+  it("carries the additional-guest allowance through to the schema", () => {
+    // Regression: the action used to post a stale `plusOneAllowed` key. Zod
+    // stripped it, the real field fell back to its default of 0, and every
+    // save silently reset the allowance to None.
+    for (const allowed of ["0", "1", "2", "3"]) {
+      const parsed = partyFormSchema.safeParse(
+        collectPartyForm(partyForm([["plusOnesAllowed", allowed]])),
+      );
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.success && parsed.data.plusOnesAllowed).toBe(
+        Number(allowed),
+      );
+    }
+  });
+
+  it("defaults the allowance to none when the field is absent", () => {
+    const parsed = partyFormSchema.safeParse(collectPartyForm(partyForm()));
+
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.plusOnesAllowed).toBe(0);
+  });
+
+  it("rejects an allowance above the cap instead of silently clamping", () => {
+    const parsed = partyFormSchema.safeParse(
+      collectPartyForm(partyForm([["plusOnesAllowed", "4"]])),
+    );
+
+    expect(parsed.success).toBe(false);
+  });
+
+  it("maps every other field the editor posts", () => {
+    const parsed = partyFormSchema.safeParse(
+      collectPartyForm(partyForm([["plusOnesAllowed", "2"]])),
+    );
+
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data).toMatchObject({
+      name: "The Smiths",
+      email: "ann@example.com",
+      phone: "250-555-0143",
+      tags: ["family"],
+      adminNotes: "Nan needs a lift",
+      plusOnesAllowed: 2,
+    });
+    expect(parsed.success && parsed.data.guests).toHaveLength(1);
+  });
+
+  it("posts no key the schema does not know about", () => {
+    // Guards the whole mapping: an unknown key means a renamed field, and zod
+    // would strip it without TypeScript noticing.
+    const collected = collectPartyForm(partyForm([["plusOnesAllowed", "1"]]));
+    const parsed = partyFormSchema.parse(collected);
+
+    expect(Object.keys(collected).sort()).toEqual(Object.keys(parsed).sort());
   });
 });

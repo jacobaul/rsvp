@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import { SectionPageLayout } from "@/app/components/SectionPageLayout";
+import { TravelMap } from "@/app/components/TravelMap";
 
 export default function SchedulePage() {
   const events = [
@@ -15,34 +16,52 @@ export default function SchedulePage() {
       description: "The ceremony will take place at the pavilion, followed by time to mingle and enjoy the grounds.",
     },
     {
-      time: "Early Evening",
+      time: "Early Evening (6:00 PM)",
       title: "Reception and Dinner",
-      description: "Dinner service, speeches, and a few shared moments with family and friends will follow the ceremony.",
+      description: "Dinner service begins at 6:00 PM, followed by speeches and a few shared moments with family and friends.",
     },
     {
-      time: "Evening",
+      time: "Evening (until 11:00 PM)",
       title: "Celebration",
-      description: "Celebrations will continue into the evening with music, dancing, and good company. The evening will wind down at a reasonable hour to allow for cleanup."
+      description: "Celebrations will continue into the evening with music, dancing, and good company. The evening will wind down at 11:00 PM to allow for cleanup."
     },
   ];
 
   return (
     <SectionPageLayout
-      eyebrow="Schedule"
+      eyebrow="Schedule &amp; Travel"
       title="The Day Of"
+      asideFirstOnMobile
       body={
         <div className="grid max-w-xl gap-8">
-          <p className="text-lg leading-8 text-muted">
-            We&apos;re still finalizing exact times and activities. Check back here for the most up-to-date schedule as we get closer to the day.
-          </p>
-          <div className="relative aspect-square overflow-hidden border border-accent/25 bg-card">
+          <div>
+            <p className="text-sm uppercase tracking-[0.45em] text-accent">The Venue</p>
+            <h2 className="mt-4 font-[family-name:var(--font-display)] text-4xl leading-tight text-foreground sm:text-5xl">
+              Esquimalt Gorge Park &amp; Pavilion
+            </h2>
+          </div>
+
+          <div className="relative aspect-[4/3] overflow-hidden border border-accent/25 bg-card">
             <Image
-              src="/epcot.jpg"
-              alt="Jacob and Felicia at Epcot (in front of the EPCOT ball)"
+              src="/esquimalt_gorge_pavilion.jpg"
+              alt="Esquimalt Gorge Park &amp; Pavilion"
               fill
               sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover"
             />
+          </div>
+
+          <p className="text-lg leading-8 text-muted">
+            The wedding ceremony and reception will both take place at the Esquimalt Gorge Pavilion in Victoria, BC. The Pavilion, located in Esquimalt Gorge Park (1070 Tillicum Road), features Japanese-inspired architecture complementing the surrounding Japanese gardens.
+          </p>
+          <p className="text-lg leading-8 text-muted">
+            The Pavilion can be accessed on foot via park pathways, by vehicle, or by bike.
+            86 parking spots, 10 accessible parking spots,
+            4 EV charging stations and a bike rack are available.
+          </p>
+
+          <div className="overflow-hidden border border-accent/25 bg-card">
+            <TravelMap />
           </div>
         </div>
       }

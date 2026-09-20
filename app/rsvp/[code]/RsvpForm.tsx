@@ -29,6 +29,13 @@ export type RsvpFormProps = {
   receptionEnabled: boolean;
 };
 
+/**
+ * Venue times. The date and venue are hard-coded on the invite and schedule
+ * pages too; these are not part of admin settings yet.
+ */
+const CEREMONY_TIME = "2:00 PM";
+const RECEPTION_TIME = "6:00 PM";
+
 const inputClass =
   "w-full border border-accent/30 bg-card px-3 py-2 text-base text-foreground placeholder:text-muted/60 focus:border-accent focus:outline-none";
 
@@ -44,21 +51,25 @@ function attendanceChoices(props: {
   if (both) {
     choices.push({
       value: "both",
-      label: `${props.ceremonyLabel} and ${props.receptionLabel}`,
+      label: `${props.ceremonyLabel} at ${CEREMONY_TIME} and ${props.receptionLabel} at ${RECEPTION_TIME}`,
     });
   }
 
   if (props.ceremonyEnabled) {
     choices.push({
       value: "ceremony",
-      label: both ? `${props.ceremonyLabel} only` : props.ceremonyLabel,
+      label: both
+        ? `${props.ceremonyLabel} only, at ${CEREMONY_TIME}`
+        : `${props.ceremonyLabel} at ${CEREMONY_TIME}`,
     });
   }
 
   if (props.receptionEnabled) {
     choices.push({
       value: "reception",
-      label: both ? `${props.receptionLabel} only` : props.receptionLabel,
+      label: both
+        ? `${props.receptionLabel} only, at ${RECEPTION_TIME}`
+        : `${props.receptionLabel} at ${RECEPTION_TIME}`,
     });
   }
 
@@ -129,13 +140,9 @@ function GuestFields({
             defaultValue={guest.dietaryNotes}
             rows={2}
             maxLength={500}
-            placeholder="Nut allergy, vegetarian, coeliac, anything we should know"
+            placeholder="Nut allergy, vegetarian, celiac, anything we should know"
             className={`${inputClass} mt-2 resize-y`}
           />
-          <p className="mt-2 text-sm leading-6 text-muted">
-            Leave blank if there is nothing to flag. We pass this straight to
-            the caterer.
-          </p>
         </div>
       ) : null}
     </fieldset>
@@ -205,12 +212,25 @@ export function RsvpForm(props: RsvpFormProps) {
     <form action={action} className="flex flex-col gap-6">
       <input type="hidden" name="code" value={props.code} />
 
+      <div className="border border-accent/25 bg-card/70 px-5 py-5 sm:px-6">
+        <p className="font-[family-name:var(--font-display)] text-2xl text-foreground">
+          About dinner
+        </p>
+        <p className="mt-2 text-base leading-7 text-muted">
+          Dinner is served buffet style, with vegetarian and gluten free
+          options available. Please note any allergies or dietary restrictions
+          below. Your answers help us give our caterer accurate numbers.
+        </p>
+      </div>
+
       {props.guests.map((guest, index) => (
         <div key={guest.id}>
           <input type="hidden" name="guestId" value={guest.id} />
           <GuestFields
             namePrefix={`guest.${guest.id}`}
-            heading={guest.name}
+            // A single guest is already named in the page heading, so repeating
+            // it here adds nothing. Several guests need naming to tell apart.
+            heading={props.guests.length === 1 ? "Will you be there?" : guest.name}
             guest={guest}
             choices={choices}
             error={state.fieldErrors?.[`guests.${index}.rsvpStatus`]}
@@ -304,7 +324,7 @@ export function RsvpForm(props: RsvpFormProps) {
                   <div className="mt-4">
                     <GuestFields
                       namePrefix="plusOne"
-                      heading={first ? `${first} will attend` : "They will attend"}
+                      heading="Will they be there?"
                       guest={guest}
                       choices={choices}
                     />
@@ -328,7 +348,18 @@ export function RsvpForm(props: RsvpFormProps) {
             </p>
           )}
         </div>
-      ) : null}
+      ) : (
+        <div className="border border-accent/25 bg-card/70 px-5 py-5 sm:px-6">
+          <p className="font-[family-name:var(--font-display)] text-2xl text-foreground">
+            About additional guests
+          </p>
+          <p className="mt-2 text-base leading-7 text-muted">
+            {props.guests.length === 1
+              ? "Space at our venue is limited, so this invitation does not include a plus one. We hope you understand, and we cannot wait to celebrate with you."
+              : "Space at our venue is limited, so we ask that guests be limited to those named above. If you think we have missed someone, please get in touch and we will do our best."}
+          </p>
+        </div>
+      )}
 
       <div className="border border-accent/25 bg-card/70 px-5 py-5 sm:px-6">
         <div className="grid gap-4 sm:grid-cols-2">

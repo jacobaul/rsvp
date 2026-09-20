@@ -102,14 +102,14 @@ describe.skipIf(!reachable)("saveRsvpResponse", () => {
       phone: "",
       guestMessage: "",
       guests: [
-        { guestId: ann.id, rsvpStatus: "ceremony", dietaryNotes: "Coeliac" },
+        { guestId: ann.id, rsvpStatus: "ceremony", dietaryNotes: "Celiac" },
         { guestId: bob.id, rsvpStatus: "reception", dietaryNotes: "Vegan" },
       ],
     });
 
     const saved = (await getPartyByCode("TESTCODE"))!;
     expect(saved.guests.find((g) => g.id === ann.id)!.dietaryNotes).toBe(
-      "Coeliac",
+      "Celiac",
     );
     expect(saved.guests.find((g) => g.id === bob.id)!.dietaryNotes).toBe(
       "Vegan",
